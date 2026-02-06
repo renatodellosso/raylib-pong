@@ -7,6 +7,7 @@ by Jeffery Myers is marked with CC0 1.0. To view a copy of this license, visit h
 
 */
 #include <stdio.h>
+#include <math.h>
 #include "raylib.h"
 
 #include "resource_dir.h"	// utility header for SearchAndSetResourceDir
@@ -29,6 +30,7 @@ const Vector2 paddleSize = {
 
 const float BALL_RADIUS = 10;
 const float PADDLE_SPEED = 250;
+const float INITIAL_BALL_SPEED = 150;
 
 int main ()
 {
@@ -64,7 +66,7 @@ int main ()
 		width / 2, height / 2
 	};
 	Vector2 ballVelocity = {
-		150, 150
+		INITIAL_BALL_SPEED, INITIAL_BALL_SPEED
 	};
 
 	int score = 0;
@@ -82,6 +84,7 @@ int main ()
 		// draw some text using the default font
 
 		DrawText(TextFormat("Score: %i", score), width / 2 - 50, 0, 20, WHITE);
+		DrawText(TextFormat("Ball Velocity: %i, %i", (int)round(ballVelocity.x), (int)round(ballVelocity.y)), width / 2 - 50, 25, 15, WHITE);
 
 		DrawRectangleRec(leftPaddle, WHITE);
 		DrawRectangleRec(rightPaddle, WHITE);
@@ -122,9 +125,9 @@ int main ()
 			TraceLog(LOG_INFO, TextFormat("Collision with ball (%f, %f) and paddle (%f, %f, %f, %f). Y Diff: %f", 
 				ballPos.x, ballPos.y, paddle.x, paddle.y, paddle.x + paddleSize.x, paddle.y + paddleSize.y, diffY));
 
-			ballVelocity.y += diffY / 10000;
+			ballVelocity.y += diffY;
 
-			ballVelocity.x *= -1.1;
+			ballVelocity.x *= -1.2;
 			score++;
 
 			ballPos.x = min(max(ballPos.x, paddle.x - BALL_RADIUS), paddle.x + paddle.width + BALL_RADIUS);
@@ -137,8 +140,14 @@ int main ()
 			ballVelocity.y *= -1;
 		}
 
-		if (ballPos.x < 0 || ballPos.x > width)
+		if (ballPos.x < 0 || ballPos.x > width) {
+			// Reset
 			ballPos.x = width / 2;
+			ballPos.y = height / 2;
+			ballVelocity = (Vector2) {
+				INITIAL_BALL_SPEED, INITIAL_BALL_SPEED
+			};
+		}
 		
 		// end the frame and get ready for the next one  (display frame, poll input, etc...)
 		EndDrawing();
