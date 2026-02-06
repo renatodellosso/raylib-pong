@@ -119,15 +119,15 @@ int main ()
 		if (!prevCollided && collided) {
 			float diffY = paddle.y + paddleSize.y / 2 - ballPos.y;
 
-			TraceLog(LOG_INFO, TextFormat("Collision with ball (%f, %f) and paddle (%f, %f, %f, %f)", 
-				ballPos.x, ballPos.y, paddle.x, paddle.y, paddle.x + paddleSize.x, paddle.y + paddleSize.y));
+			TraceLog(LOG_INFO, TextFormat("Collision with ball (%f, %f) and paddle (%f, %f, %f, %f). Y Diff: %f", 
+				ballPos.x, ballPos.y, paddle.x, paddle.y, paddle.x + paddleSize.x, paddle.y + paddleSize.y, diffY));
 
 			ballVelocity.y += diffY / 10000;
 
 			ballVelocity.x *= -1.1;
 			score++;
 
-			ballPos.x = min(max(ballPos.x, paddle.x + BALL_RADIUS), paddle.x - BALL_RADIUS);
+			ballPos.x = min(max(ballPos.x, paddle.x - BALL_RADIUS), paddle.x + paddle.width + BALL_RADIUS);
 		}
 
 		prevCollided = collided;
