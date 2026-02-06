@@ -68,7 +68,8 @@ int main ()
 	};
 
 	int score = 0;
-	
+	bool prevCollided;
+
 	// game loop
 	while (!WindowShouldClose())		// run the loop until the user presses ESCAPE or presses the Close button on the window
 	{
@@ -96,24 +97,48 @@ int main ()
 		ballPos.y += scaledVelocity.y;
 
 		if (IsKeyDown(KEY_S))
-			leftPaddle.y = min(leftPaddle.y + deltaTime * PADDLE_SPEED, height);
+			leftPaddle.y = min(leftPaddle.y + deltaTime * PADDLE_SPEED, height - paddleSize.y);
 		else if (IsKeyDown(KEY_W))
 			leftPaddle.y = max(leftPaddle.y - deltaTime * PADDLE_SPEED, 0);
 
 		if (IsKeyDown(KEY_DOWN))
-			rightPaddle.y = min(rightPaddle.y + deltaTime * PADDLE_SPEED, height);
+			rightPaddle.y = min(rightPaddle.y + deltaTime * PADDLE_SPEED, height - paddleSize.y);
 		else if (IsKeyDown(KEY_UP))
 			rightPaddle.y = max(rightPaddle.y - deltaTime * PADDLE_SPEED, 0);
 
-		if (CheckCollisionCircleRec(ballPos, BALL_RADIUS, leftPaddle) || CheckCollisionCircleRec(ballPos, BALL_RADIUS, rightPaddle)) {
+		bool collided;
+		Rectangle paddle;
+		if (CheckCollisionCircleRec(ballPos, BALL_RADIUS, leftPaddle)) {
+			collided = true;
+			paddle = leftPaddle;
+		} else if (CheckCollisionCircleRec(ballPos, BALL_RADIUS, rightPaddle)) {
+			collided = true;
+			paddle = rightPaddle;
+		} else collided = false;
+
+		if (!prevCollided && collided) {
+			float diffY = paddle.y + paddleSize.y / 2 - ballPos.y;
+
+			TraceLog(LOG_INFO, TextFormat("Collision with ball (%f, %f) and paddle (%f, %f, %f, %f)", 
+				ballPos.x, ballPos.y, paddle.x, paddle.y, paddle.x + paddleSize.x, paddle.y + paddleSize.y));
+
+			ballVelocity.y += diffY / 10000;
+
 			ballVelocity.x *= -1.1;
 			score++;
+
+			ballPos.x = min(max(ballPos.x, paddle.x + BALL_RADIUS), paddle.x - BALL_RADIUS);
 		}
+
+		prevCollided = collided;
 
 		if (ballPos.y > height || ballPos.y < 0) {
 			ballPos.y = max(min(ballPos.y, height), 0);
 			ballVelocity.y *= -1;
 		}
+
+		if (ballPos.x < 0 || ballPos.x > width)
+			ballPos.x = width / 2;
 		
 		// end the frame and get ready for the next one  (display frame, poll input, etc...)
 		EndDrawing();
