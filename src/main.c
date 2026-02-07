@@ -8,8 +8,10 @@ by Jeffery Myers is marked with CC0 1.0. To view a copy of this license, visit h
 */
 #include <stdio.h>
 #include <math.h>
-#include "raylib.h"
+#include <time.h>
+#include <stdlib.h>
 
+#include "raylib.h"
 #include "resource_dir.h"	// utility header for SearchAndSetResourceDir
 
 const bool DEBUG_MODE = false;
@@ -30,12 +32,18 @@ float clamp(float val, float minVal, float maxVal) {
 	return max(min(val, maxVal), minVal);
 }
 
+float randRange(float min, float max) {
+	int num = rand();
+	float val = ((float)num) / RAND_MAX;
+	return val * (max - min) + min;
+}
+
 const Vector2 paddleSize = {
 	10, 250
 };
 
 const float BALL_RADIUS = 10;
-const float PADDLE_SPEED = 250;
+const float INITIAL_PADDLE_SPEED = 250;
 const float INITIAL_BALL_SPEED = 150;
 
 typedef struct {
@@ -43,6 +51,7 @@ typedef struct {
 
 	Rectangle leftPaddle;
 	Rectangle rightPaddle;
+	float paddleSpeed;
 	
 	Vector2 ballPos;
 	Vector2 ballVelocity;
@@ -72,7 +81,22 @@ void initWindow(Game* game) {
 	SearchAndSetResourceDir("resources");
 }
 
+void serveBall(Game* game) {
+	game->ballPos = (Vector2){
+		game->width / 2, game->height / 2
+	};
+	
+	float theta = randRange(PI / 8, PI * 3 / 8);
+	int xSign = randRange(0, 1) < 0.5 ? 1 : -1;
+	int ySign = randRange(0, 1) < 0.5 ? 1 : -1;
+
+	game->ballVelocity = (Vector2){
+		INITIAL_BALL_SPEED * cos(theta * ySign) * xSign, INITIAL_BALL_SPEED * sin(theta * ySign)
+	};
+}
+
 void initGame(Game* game) {
+
 	game->leftPaddle = (Rectangle){
 		10, game->height / 2 - paddleSize.y / 2,
 		paddleSize.x, paddleSize.y
@@ -83,12 +107,11 @@ void initGame(Game* game) {
 		paddleSize.x, paddleSize.y
 	};
 
-	game->ballPos = (Vector2){
-		game->width / 2, game->height / 2
-	};
-	game->ballVelocity = (Vector2){
-		INITIAL_BALL_SPEED, INITIAL_BALL_SPEED
-	};
+	game->paddleSpeed = INITIAL_PADDLE_SPEED;
+
+	game->score = 0;
+
+	serveBall(game);
 }
 
 void render(Game* game) {
@@ -120,9 +143,9 @@ void handleInput(Game* game) {
 	float deltaTime = GetFrameTime();
 
 	if (IsKeyDown(KEY_S))
-		game->leftPaddle.y = min(game->leftPaddle.y + deltaTime * PADDLE_SPEED, game->height - paddleSize.y);
+		game->leftPaddle.y = min(game->leftPaddle.y + deltaTime * game->paddleSpeed, game->height - paddleSize.y);
 	else if (IsKeyDown(KEY_W))
-		game->leftPaddle.y = max(game->leftPaddle.y - deltaTime * PADDLE_SPEED, 0);
+		game->leftPaddle.y = max(game->leftPaddle.y - deltaTime * game->paddleSpeed, 0);
 }
 
 void handleCollisions(Game* game) {
@@ -131,6 +154,7 @@ void handleCollisions(Game* game) {
 	if (CheckCollisionCircleRec(game->ballPos, BALL_RADIUS, game->leftPaddle)) {
 		collided = true;
 		paddle = game->leftPaddle;
+		game->score++;
 	} else if (CheckCollisionCircleRec(game->ballPos, BALL_RADIUS, game->rightPaddle)) {
 		collided = true;
 		paddle = game->rightPaddle;
@@ -145,7 +169,7 @@ void handleCollisions(Game* game) {
 		game->ballVelocity.y += diffY;
 
 		game->ballVelocity.x *= -1.2;
-		game->score++;
+		game->paddleSpeed *= 1.1;
 
 		game->ballPos.x = clamp(game->ballPos.x, paddle.x - BALL_RADIUS, paddle.x + paddle.width + BALL_RADIUS);
 	}
@@ -157,14 +181,17 @@ void handleCollisions(Game* game) {
 		game->ballVelocity.y *= -1;
 	}
 
-	if (game->ballPos.x < 0 || game->ballPos.x > game->width) {
+	if (game->ballPos.x < 0) {
 		// Reset
-		game->ballPos.x = game->width / 2;
-		game->ballPos.y = game->height / 2;
-		game->ballVelocity = (Vector2) {
-			INITIAL_BALL_SPEED, INITIAL_BALL_SPEED
-		};
-		game->score = 0;
+		initGame(game);
+	} else if (game->ballPos.x > game->width) {
+		// Right paddle missed
+		game->score += 10;
+
+		game->rightPaddle.y = game->height / 2 - game->rightPaddle.height / 2;
+
+		serveBall(game);
+		game->paddleSpeed = INITIAL_PADDLE_SPEED;
 	}
 }
 
@@ -179,6 +206,9 @@ void moveBall(Game* game) {
 }
 
 void moveRightPaddle(Game* game) {
+	if (game->ballVelocity.x < 0)
+		return;
+
 	float diffY = game->ballPos.y - game->rightPaddle.y;
 	float diffX = game->rightPaddle.x - game->ballPos.x - BALL_RADIUS;
 	float time = diffX / game->ballVelocity.x;
@@ -186,13 +216,16 @@ void moveRightPaddle(Game* game) {
 	float impactY = game->ballPos.y + game->ballVelocity.y * time;
 	game->predictedImpactY = impactY;
 
-	float movement = clamp(impactY - (game->rightPaddle.y + game->rightPaddle.height / 2), -PADDLE_SPEED, PADDLE_SPEED);
+	float movement = clamp(impactY - (game->rightPaddle.y + game->rightPaddle.height / 2), -game->paddleSpeed, game->paddleSpeed);
 	game->rightPaddle.y += movement * GetFrameTime();
 	game->rightPaddle.y = clamp(game->rightPaddle.y, 0, game->height - game->rightPaddle.height);
 }
 
 int main ()
 {
+	srand(time(NULL));
+	rand(); // First number is always within a small range
+
 	Game game = {};	
 
 	initWindow(&game);
