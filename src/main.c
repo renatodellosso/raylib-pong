@@ -39,12 +39,14 @@ float randRange(float min, float max) {
 }
 
 const Vector2 paddleSize = {
-	10, 250
+	10, 125
 };
 
 const float BALL_RADIUS = 10;
-const float INITIAL_PADDLE_SPEED = 250;
-const float INITIAL_BALL_SPEED = 150;
+const float INITIAL_PADDLE_SPEED = 350;
+const float INITIAL_BALL_SPEED = 350;
+const float BALL_SPEED_MULT = 1.25;
+const float PADDLE_SPEED_MULT = 1.1;
 
 typedef struct {
 	int width, height;
@@ -124,8 +126,10 @@ void render(Game* game) {
 	// draw some text using the default font
 
 	DrawText(TextFormat("Score: %i", game->score), game->width / 2 - 50, 0, 20, WHITE);
-	if (DEBUG_MODE)
+	if (DEBUG_MODE) {
 		DrawText(TextFormat("Ball Velocity: %i, %i", (int)round(game->ballVelocity.x), (int)round(game->ballVelocity.y)), game->width / 2 - 50, 25, 15, WHITE);
+		DrawText(TextFormat("FPS: %i", (int)round(1 / GetFrameTime())), game->width / 2 - 50, 40, 15, WHITE);
+	}
 
 	DrawRectangleRec(game->leftPaddle, WHITE);
 	DrawRectangleRec(game->rightPaddle, WHITE);
@@ -168,8 +172,8 @@ void handleCollisions(Game* game) {
 
 		game->ballVelocity.y += diffY;
 
-		game->ballVelocity.x *= -1.2;
-		game->paddleSpeed *= 1.1;
+		game->ballVelocity.x *= -BALL_SPEED_MULT;
+		game->paddleSpeed *= PADDLE_SPEED_MULT;
 
 		game->ballPos.x = clamp(game->ballPos.x, paddle.x - BALL_RADIUS, paddle.x + paddle.width + BALL_RADIUS);
 	}
